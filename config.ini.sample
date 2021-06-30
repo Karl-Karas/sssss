@@ -1,0 +1,21 @@
+[Common]
+bind_ip = 127.0.0.1
+port = 8080
+root_directory = /tmp/tmpa93jg94f
+campaign_directory = BqWSU4wb8L
+empty_campaign_msg = This campaign is empty
+no_such_campaign_msg = No such campaign
+no_such_sheet_msg = No such sheet
+form_name_field = name
+form_page_field = page
+# You need to specify a discord bot token
+# to share rolls on your discord server
+# discord_bot_token = your-bot-token
+max_discord_messages_by_server = 100
+
+[my-campaign-id]
+# You need to specify a server id for the campaign and 
+# you may sepcify a dedicated channel id (default to the first channel)
+# discord_server_id = your-server-id
+# discord_channel_id = your-channel-id-for-this-campaign
+# discord_msg_type = message-type-for-this-campaign
