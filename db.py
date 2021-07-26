@@ -1,3 +1,4 @@
+import math
 import os
 from sqlite3 import DatabaseError, Connection, connect
 from typing import Union, List, Dict, Tuple
@@ -186,6 +187,23 @@ def get_energy_usage(db: Connection, campaign: str) -> Dict[str, int]:
         for row in cur.fetchall():
             base_energy = row[0].split("-")[-1]
             data[base_energy] = data.get(base_energy, 0) + row[1]
+    finally:
+        cur.close()
+    return data
+
+
+def get_stats_by_test(db: Connection, campaign: str) -> List[Tuple[str, int, float, float]]:
+    """Return, for each test, its frequency, its average margin and its margin stddev"""
+    data = []
+    cur = db.cursor()
+    try:
+        cur.execute('select R.reason, count(rowid) as c, s.a, avg((R.margin - s.a) * (R.margin - s.a)) as var'
+                    ' from rolls R inner join'
+                    ' (select reason, avg(margin) AS a FROM rolls where campaign=? and threshold > 0 group by reason) s'
+                    ' on R.reason=s.reason'
+                    ' where campaign=? and threshold > 0 group by R.reason order by c desc', [campaign, campaign])
+        for row in cur.fetchall():
+            data.append((row[0], row[1], row[2], math.sqrt(row[3])))
     finally:
         cur.close()
     return data

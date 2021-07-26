@@ -26,5 +26,15 @@
 <img src="{{ url_for('view_graph', campaign=campaign, graph="energy_usage.svg") }}"
      alt="Energy usage"/>
 
+<h2>Tests</h2>
+<ul>
+    {% for test, freq, mean, stddev in test_stats %}
+        <li>
+            "{{ test }}" rolled {{ freq }} times for a mean margin of {{ mean|round(2) }}
+            (standard deviation: {{ stddev|round(2) }})
+        </li>
+    {% endfor %}
+</ul>
+
 </body>
 </html>
