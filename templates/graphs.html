@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistics</title>
+</head>
+<body>
+
+<h1>Statistics for campaign {{ campaign }}</h1>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="success_failure_by_player.svg") }}"
+     alt="Success and failure by player"/>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="critical_by_player.svg") }}"
+     alt="Critical by player"/>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="nimdir_index_by_player.svg") }}"
+     alt="Streak by player"/>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="base_dice_distributions.svg") }}"
+     alt="2d6 distribution by player"/>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="formula_usage.svg") }}"
+     alt="Formula element usage"/>
+
+<img src="{{ url_for('view_graph', campaign=campaign, graph="energy_usage.svg") }}"
+     alt="Energy usage"/>
+
+</body>
+</html>

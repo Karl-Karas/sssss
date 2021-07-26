@@ -13,10 +13,14 @@ import collections as col
 import string
 from pathlib import Path
 
-from flask import Flask, current_app, request, Response
+from flask import Flask, current_app, request, Response, render_template, abort
 from markupsafe import escape
 
+from db import init_db_connection, insert_roll, create_db
 from discord_bot import roll_queue, init_bot, close_bot
+
+from graph import success_failure_by_player, critical_by_player, nimdir_index_by_player, base_dice_distributions, \
+    formula_usage, energy_usage
 
 ## config meta data ##
 default_section = 'Common'
@@ -43,6 +47,7 @@ discord_server_id = ConfigField('discord_server_id', 'str', False, None)
 max_discord_messages_by_server = ConfigField('max_discord_messages_by_server', 'int', False, 100)
 discord_channel_id = ConfigField('discord_channel_id', 'str', False, None)
 discord_msg_type = ConfigField('discord_msg_type', 'str', False, None)
+database_path = ConfigField('database_path', 'str', False, "roll.sqlite3")
 
 config_meta = {
                 default_section: [
@@ -57,6 +62,7 @@ config_meta = {
                     form_page,
                     discord_bot_token,
                     max_discord_messages_by_server,
+                    database_path
                 ],
 
                 campaign_section : [
@@ -102,6 +108,10 @@ def setup(app, config=None):
     token = app.local_config.get(discord_bot_token.name)
     max_messages = int(app.local_config.get(max_discord_messages_by_server.name,
                                             max_discord_messages_by_server.default_value))
+    # Setup database
+    db_path = app.local_config.get(database_path.name, database_path.default_value)
+    if not os.path.exists(db_path):
+        create_db(db_path)
     if token is not None:
         init_bot(token, max_messages)
     return app
@@ -207,6 +217,9 @@ def push_sheet(campaign_id, sheet_id):
 
 @app.route('/roll/<campaign_id>', methods=['POST'])
 def push_roll(campaign_id):
+    # Save the roll in database
+    with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
+        insert_roll(db, campaign_id, dict(request.form))
     # Get discord server, if any, matching the campaign
     server_id = app.campaign_configs.get(campaign_id, {}).get(discord_server_id.name)
     print(f"SERVER OK: {server_id}")
@@ -221,6 +234,30 @@ def push_roll(campaign_id):
     resp = Response("OK")
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
+
+@app.route('/graphs/<campaign>', methods=['GET'])
+def view_graph_page(campaign):
+    return render_template("graphs.html", campaign=campaign)
+
+@app.route('/graphs/<campaign>/<graph>', methods=['GET'])
+def view_graph(campaign, graph):
+    svg = None
+    with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
+        if graph == "success_failure_by_player.svg":
+            svg = success_failure_by_player(db, campaign)
+        elif graph == "critical_by_player.svg":
+            svg = critical_by_player(db, campaign)
+        elif graph == "nimdir_index_by_player.svg":
+            svg = nimdir_index_by_player(db, campaign)
+        elif graph == "base_dice_distributions.svg":
+            svg = base_dice_distributions(db, campaign)
+        elif graph == "formula_usage.svg":
+            svg = formula_usage(db, campaign)
+        elif graph == "energy_usage.svg":
+            svg = energy_usage(db, campaign)
+        else:
+            abort(404)
+    return Response(svg, mimetype="image/svg+xml")
 
 if __name__ == '__main__':
     run(app)

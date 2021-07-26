@@ -12,6 +12,7 @@ form_page_field = page
 # to share rolls on your discord server
 # discord_bot_token = your-bot-token
 max_discord_messages_by_server = 100
+# database_path = roll.sqlite3
 
 [my-campaign-id]
 # You need to specify a server id for the campaign and 
