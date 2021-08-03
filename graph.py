@@ -82,7 +82,7 @@ def success_failure_by_player(db: Connection, campaign: str) -> str:
     subplot.set_ylabel("% of rolls")
     subplot.set_yticks([0, 25, 50, 75, 100])
     subplot.set_xticks(x)
-    subplot.set_xticklabels(players)
+    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
     common_settings(subplot, False)
 
     return get_svg(fig)
@@ -108,7 +108,7 @@ def critical_by_player(db: Connection, campaign: str) -> str:
     # Parameters
     subplot.set_ylabel("Number of rolls")
     subplot.set_xticks(x)
-    subplot.set_xticklabels(players)
+    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
     common_settings(subplot)
 
     return get_svg(fig)
@@ -137,7 +137,7 @@ def nimdir_index_by_player(db: Connection, campaign: str) -> str:
     # Parameters
     subplot.set_ylabel("Number of rolls")
     subplot.set_xticks(x)
-    subplot.set_xticklabels(players)
+    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
     common_settings(subplot)
 
     return get_svg(fig)
@@ -163,7 +163,7 @@ def base_dice_distributions(db: Connection, campaign: str) -> str:
     reference_cdf = []
     for name, sums in data.items():
         x, cdf = cdf_data(sums, origin=False)
-        subplot.step(x + [12], cdf + [1], label=name, where="post", linewidth=3)
+        subplot.step(x + [12], cdf + [1], label=name.split(" ")[0], where="post", linewidth=3)
         if name == reference:
             reference_cdf = cdf
 
@@ -199,7 +199,7 @@ def formula_usage(db: Connection, campaign: str) -> str:
     # Parameters
     subplot.set_ylabel("Number of rolls")
     subplot.set_xticks(x)
-    subplot.set_xticklabels(elements)
+    subplot.set_xticklabels(elements, rotation=45)
     common_settings(subplot, labels=False, xlabel="Formula element")
 
     return get_svg(fig)
@@ -224,7 +224,7 @@ def energy_usage(db: Connection, campaign: str) -> str:
     # Parameters
     subplot.set_ylabel("Number of rolls")
     subplot.set_xticks(x)
-    subplot.set_xticklabels(elements)
+    subplot.set_xticklabels(elements, rotation=45)
     common_settings(subplot, labels=False, xlabel="Invested energy")
 
     return get_svg(fig)
