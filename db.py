@@ -36,12 +36,18 @@ def insert_roll(db: Connection, campaign: str, post_data: Dict[str, Union[List, 
     dices = []
     formula = []
     energies = []
+    name = None
+    timestamp = None
     for key, value in post_data.items():
         if key in integer_fields:
             insert_data.append((key, int(value) if value != "NaN" else None))
         elif key in boolean_fields:
             insert_data.append((key, value == "true"))
         elif key in text_fields:
+            if key == "name":
+                name = value
+            elif key == "timestamp":
+                timestamp = value
             insert_data.append((key, value if value is not None and len(value) > 0 else None))
         elif key in dice_fields:
             dices.extend([(key, i, int(dice)) for i, dice in enumerate(value.split(",") if len(value) > 0 else [])])
@@ -55,6 +61,11 @@ def insert_roll(db: Connection, campaign: str, post_data: Dict[str, Union[List, 
     if len(insert_data) > 0 and len(dices) > 0:
         cur = db.cursor()
         try:
+            # Remove old data if any to update
+            if name and timestamp:
+                cur.execute(f"delete from rolls where campaign=? and name=? and timestamp=?",
+                            [campaign, name, timestamp])
+
             columns = ','.join(['"' + k + '"' for k, _ in insert_data])
             cmd = f"insert into rolls({columns}) values ({','.join(['?' for _ in insert_data])})"
             cur.execute(cmd, [v for k, v in insert_data])
