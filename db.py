@@ -42,7 +42,7 @@ def insert_roll(db: Connection, campaign: str, post_data: Dict[str, Union[List, 
         elif key in boolean_fields:
             insert_data.append((key, value == "true"))
         elif key in text_fields:
-            insert_data.append((key, value if len(value) > 0 else None))
+            insert_data.append((key, value if value is not None and len(value) > 0 else None))
         elif key in dice_fields:
             dices.extend([(key, i, int(dice)) for i, dice in enumerate(value.split(",") if len(value) > 0 else [])])
         elif key == formula_field:
