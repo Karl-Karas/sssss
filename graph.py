@@ -75,11 +75,11 @@ def grouped_chart(data: Dict[str, Tuple[float, float]], categories: List[str], c
                   group_title: str, y_label: str) -> str:
     """Returns a group chart from data of the form {'player1': (data1, data2)} in a json string"""
 
-    df_source = {}
+    df_source = {"Players": [], categories[0]: [], categories[1]: []}
     for player, value in data.items():
-        df_source.setdefault("Players", []).append(player.split(" ")[0])
-        df_source.setdefault(categories[0], []).append(value[0])
-        df_source.setdefault(categories[1], []).append(value[1])
+        df_source["Players"].append(player.split(" ")[0])
+        df_source[categories[0]].append(value[0])
+        df_source[categories[1]].append(value[1])
     df = pd.DataFrame.from_dict(df_source)
     df = pd.melt(df, id_vars=["Players"], var_name=group_title, value_name=y_label)
 
@@ -150,10 +150,10 @@ def formula_usage(db: Connection, campaign: str) -> str:
 
     data = get_formula_usage(db, campaign)
 
-    df_source = {}
+    df_source = {"Formula element": [], "Usage Count": []}
     for key, value in data.items():
-        df_source.setdefault("Formula element", []).append(key)
-        df_source.setdefault("Usage Count", []).append(value)
+        df_source["Formula element"].append(key)
+        df_source["Usage Count"].append(value)
     df = pd.DataFrame.from_dict(df_source)
     plot = px.bar(df, x="Formula element", y="Usage Count", color_discrete_sequence=["black"])
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
@@ -166,10 +166,10 @@ def energy_usage(db: Connection, campaign: str) -> str:
 
     data = get_energy_usage(db, campaign)
 
-    df_source = {}
+    df_source = {"Energies": [], "Usage Count": []}
     for key, value in data.items():
-        df_source.setdefault("Energies", []).append(key)
-        df_source.setdefault("Usage Count", []).append(value)
+        df_source["Energies"].append(key)
+        df_source["Usage Count"].append(value)
     df = pd.DataFrame.from_dict(df_source)
     plot = px.bar(df, x="Energies", y="Usage Count", color_discrete_sequence=["black"])
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
