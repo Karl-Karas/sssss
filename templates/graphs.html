@@ -8,23 +8,12 @@
 
 <h1>Statistics for campaign {{ campaign }}</h1>
 
-<img src="{{ url_for('view_graph', campaign=campaign, graph="success_failure_by_player.svg") }}"
-     alt="Success and failure by player"/>
-
-<img src="{{ url_for('view_graph', campaign=campaign, graph="critical_by_player.svg") }}"
-     alt="Critical by player"/>
-
-<img src="{{ url_for('view_graph', campaign=campaign, graph="nimdir_index_by_player.svg") }}"
-     alt="Streak by player"/>
-
-<img src="{{ url_for('view_graph', campaign=campaign, graph="base_dice_distributions.svg") }}"
-     alt="2d6 distribution by player"/>
-
-<img src="{{ url_for('view_graph', campaign=campaign, graph="formula_usage.svg") }}"
-     alt="Formula element usage"/>
-
-<img src="{{ url_for('view_graph', campaign=campaign, graph="energy_usage.svg") }}"
-     alt="Energy usage"/>
+<div id="success_failure_by_player" class="chart"></div>
+<div id="critical_by_player" class="chart"></div>
+<div id="nimdir_index_by_player" class="chart"></div>
+<div id="base_dice_distributions" class="chart"></div>
+<div id="formula_usage" class="chart"></div>
+<div id="energy_usage" class="chart"></div>
 
 <h2>Tests</h2>
 <ul>
@@ -37,4 +26,20 @@
 </ul>
 
 </body>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script type="text/javascript">
+    const success_failure_by_player_graph = {{ success_failure_by_player | safe }};
+    Plotly.plot("success_failure_by_player", success_failure_by_player_graph, {});
+    const critical_by_player_graph = {{ critical_by_player | safe }};
+    Plotly.plot("critical_by_player", critical_by_player_graph, {});
+    const nimdir_index_by_player_graph = {{ nimdir_index_by_player | safe }};
+    Plotly.plot("nimdir_index_by_player", nimdir_index_by_player_graph, {});
+    const base_dice_distributions_graph = {{ base_dice_distributions | safe }};
+    Plotly.plot("base_dice_distributions", base_dice_distributions_graph, {});
+    const formula_usage_graph = {{ formula_usage | safe }};
+    Plotly.plot("formula_usage", formula_usage_graph, {});
+    const energy_usage_graph = {{ energy_usage | safe }};
+    Plotly.plot("energy_usage", energy_usage_graph, {});
+</script>
 </html>

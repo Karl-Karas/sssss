@@ -238,27 +238,13 @@ def push_roll(campaign_id):
 @app.route('/graphs/<campaign>', methods=['GET'])
 def view_graph_page(campaign):
     with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
-        return render_template("graphs.html", campaign=campaign, test_stats=get_stats_by_test(db, campaign))
-
-@app.route('/graphs/<campaign>/<graph>', methods=['GET'])
-def view_graph(campaign, graph):
-    svg = None
-    with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
-        if graph == "success_failure_by_player.svg":
-            svg = success_failure_by_player(db, campaign)
-        elif graph == "critical_by_player.svg":
-            svg = critical_by_player(db, campaign)
-        elif graph == "nimdir_index_by_player.svg":
-            svg = nimdir_index_by_player(db, campaign)
-        elif graph == "base_dice_distributions.svg":
-            svg = base_dice_distributions(db, campaign)
-        elif graph == "formula_usage.svg":
-            svg = formula_usage(db, campaign)
-        elif graph == "energy_usage.svg":
-            svg = energy_usage(db, campaign)
-        else:
-            abort(404)
-    return Response(svg, mimetype="image/svg+xml")
+        return render_template("graphs.html", campaign=campaign, test_stats=get_stats_by_test(db, campaign),
+                               success_failure_by_player=success_failure_by_player(db, campaign),
+                               critical_by_player=critical_by_player(db, campaign),
+                               nimdir_index_by_player=nimdir_index_by_player(db, campaign),
+                               base_dice_distributions=base_dice_distributions(db, campaign),
+                               formula_usage=formula_usage(db, campaign),
+                               energy_usage=energy_usage(db, campaign))
 
 if __name__ == '__main__':
     run(app)

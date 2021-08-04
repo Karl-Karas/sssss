@@ -1,36 +1,16 @@
+import json
 import math
-from io import StringIO
 from sqlite3 import Connection
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Dict
 
-import matplotlib as mpl
 import numpy as np
-from matplotlib.axes import Subplot
-from matplotlib.ticker import FormatStrFormatter
-
-mpl.use('svg')
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import Figure
+import pandas as pd
+import plotly
+import plotly.express as px
 
 from db import get_success_failure_by_player, get_critical_by_player, get_nimdir_index_by_player, get_formula_usage, \
     get_energy_usage, get_base_dices
 
-FONTSIZE = 14
-
-def get_svg(fig: Figure) -> str:
-    svg = StringIO()
-    fig.tight_layout()
-    fig.savefig(svg, format='svg')
-    svg.seek(0)
-    return svg.read()
-
-def common_settings(subplot: Subplot, integer: bool = True, labels: bool = True, xlabel: str = "Players") -> None:
-    if labels:
-        subplot.legend(loc="best")
-    if integer:
-        subplot.yaxis.get_major_locator().set_params(integer=True)
-    subplot.set_xlabel(xlabel, fontsize=FONTSIZE)
-    subplot.set_ylim(bottom=0)
 
 def _histogram_data(bounded_data: List[Union[float, int]]) -> Tuple[List[int], List[Union[float, int]]]:
     counts = []
@@ -44,7 +24,9 @@ def _histogram_data(bounded_data: List[Union[float, int]]) -> Tuple[List[int], L
             bin_edges.append(bounded_data[i])
     return counts, bin_edges
 
-def cdf_data(cdf_values: List[Union[float, int]], origin: bool = True) -> Tuple[List[Union[float, int]], List[float]]:
+
+def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union[int, float]] = ()) \
+        -> Tuple[List[Union[float, int]], List[float]]:
     data = sorted(cdf_values)
 
     # Count and filter math.inf
@@ -60,87 +42,73 @@ def cdf_data(cdf_values: List[Union[float, int]], origin: bool = True) -> Tuple[
     bin_edges.insert(0, 0)
     cdf = list(cdf)
     cdf.insert(0, 0)
-    return bin_edges, cdf
+
+    new_bin_edges = []
+    new_cdf = []
+    current_bin_idx = 0
+    for to_add in shadow_points_from:
+        for i in range(current_bin_idx, len(bin_edges)):
+            if to_add == bin_edges[i]:
+                # Everything ok up to to_add
+                new_bin_edges.append(to_add)
+                new_cdf.append(cdf[i])
+                current_bin_idx = i + 1
+                break
+            elif to_add < bin_edges[i]:
+                # Create new point
+                new_bin_edges.append(to_add)
+                new_cdf.append(new_cdf[-1])
+                break
+            else:
+                # Use old point
+                new_bin_edges.append(bin_edges[i])
+                new_cdf.append(cdf[i])
+        if current_bin_idx == len(bin_edges) and new_bin_edges[-1] != to_add:
+            # to_add is beyond the current range of bins
+            new_bin_edges.append(to_add)
+            new_cdf.append(new_cdf[-1])
+
+    return (bin_edges, cdf) if len(shadow_points_from) == 0 else (new_bin_edges, new_cdf)
+
+
+def grouped_chart(data: Dict[str, Tuple[float, float]], categories: List[str], colors: List[str],
+                  group_title: str, y_label: str) -> str:
+    """Returns a group chart from data of the form {'player1': (data1, data2)} in a json string"""
+
+    df_source = {}
+    for player, value in data.items():
+        df_source.setdefault("Players", []).append(player.split(" ")[0])
+        df_source.setdefault(categories[0], []).append(value[0])
+        df_source.setdefault(categories[1], []).append(value[1])
+    df = pd.DataFrame.from_dict(df_source)
+    df = pd.melt(df, id_vars=["Players"], var_name=group_title, value_name=y_label)
+
+    plot = px.bar(df, x="Players", color=group_title, y=y_label, barmode="group", color_discrete_sequence=colors)
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
+
 
 def success_failure_by_player(db: Connection, campaign: str) -> str:
-    """Returns a bar plot showing success and failures percentage by player in a the svg encoded as a string"""
+    """Returns a bar plot showing success and failures percentage by player in a json string"""
 
     data = get_success_failure_by_player(db, campaign)
+    return grouped_chart(data, ["Success Rate", "Failure Rate"], ["darkgreen", "tomato"], "Rate", "%")
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
-
-    # Data
-    players = sorted(list(data.keys()))
-    x = np.arange(len(players))
-    width = 0.35
-    subplot.bar(x - width / 2, [data[player][0] for player in players], width, color="darkgreen", label="Success rate")
-    subplot.bar(x + width / 2, [data[player][1] for player in players], width, color="tomato", label="Failure rate")
-
-    # Parameters
-    subplot.set_ylabel("% of rolls")
-    subplot.set_yticks([0, 25, 50, 75, 100])
-    subplot.set_xticks(x)
-    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
-    common_settings(subplot, False)
-
-    return get_svg(fig)
 
 def critical_by_player(db: Connection, campaign: str) -> str:
-    """Returns a bar plot showing critical success and failures by player in a the svg encoded as a string"""
+    """Returns a bar plot showing critical success and failures by player in a json string"""
 
     data = get_critical_by_player(db, campaign)
+    return grouped_chart(data, ["Critical Successes", "Critical Failures"], ["darkgreen", "tomato"], "Type", "Count")
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
-
-    # Data
-    players = sorted(list(data.keys()))
-    x = np.arange(len(players))
-    width = 0.35
-    subplot.bar(x - width / 2, [data[player][0] for player in players], width, color="darkgreen",
-                label="Critical successes")
-    subplot.bar(x + width / 2, [data[player][1] for player in players], width, color="tomato",
-                label="Critical failures")
-
-    # Parameters
-    subplot.set_ylabel("Number of rolls")
-    subplot.set_xticks(x)
-    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
-    common_settings(subplot)
-
-    return get_svg(fig)
 
 def nimdir_index_by_player(db: Connection, campaign: str) -> str:
     """
-    Returns a bar plot showing the maximum length of streaks of successes and failures by player in a the svg
-    encoded as a string
+    Returns a bar plot showing the maximum length of streaks of successes and failures by player in a json string
     """
 
     data = get_nimdir_index_by_player(db, campaign)
+    return grouped_chart(data, ["Success Streak", "Failure Streak"], ["darkgreen", "tomato"], "Type", "Streak")
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
-
-    # Data
-    players = sorted(list(data.keys()))
-    x = np.arange(len(players))
-    width = 0.35
-    subplot.bar(x - width / 2, [data[player][0] for player in players], width, color="darkgreen",
-                label="Streak of successes")
-    subplot.bar(x + width / 2, [data[player][1] for player in players], width, color="tomato",
-                label="Streak of failures")
-
-    # Parameters
-    subplot.set_ylabel("Number of rolls")
-    subplot.set_xticks(x)
-    subplot.set_xticklabels([p.split(" ")[0] for p in players], rotation=45)
-    common_settings(subplot)
-
-    return get_svg(fig)
 
 def base_dice_distributions(db: Connection, campaign: str) -> str:
     """
@@ -155,29 +123,25 @@ def base_dice_distributions(db: Connection, campaign: str) -> str:
         for j in range(1, 7):
             data.setdefault(reference, []).append(i + j)
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
-
-    # Data
+    # Produce DataFrame
+    df_source: Dict[str, List[Union[int, float]]] = {"Sum of 2d6": [i for i in range(2, 13)]}
+    df_source["Sum of 2d6"].insert(0, 0)
     reference_cdf = []
     for name, sums in data.items():
-        x, cdf = cdf_data(sums, origin=False)
-        subplot.step(x + [12], cdf + [1], label=name.split(" ")[0], where="post", linewidth=3)
+        x, cdf = cdf_data(sums, shadow_points_from=df_source["Sum of 2d6"])
         if name == reference:
             reference_cdf = cdf
+        df_source.setdefault(name.split(" ")[0], []).extend(cdf)
+    df = pd.DataFrame.from_dict(df_source)
+    df = pd.melt(df, id_vars=["Sum of 2d6"], var_name="Players", value_name="CDF")
 
-    # Parameters
-    subplot.set_ylabel("CDF")
-    subplot.set_ylim(bottom=0, top=1)
-    subplot.set_xlim(left=2, right=12)
-    subplot.set_xticks([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    subplot.set_yticks(reference_cdf)
-    subplot.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-    subplot.grid()
-    common_settings(subplot, xlabel="Sum of 2d6", integer=False)
+    plot = px.line(df, x="Sum of 2d6", color="Players", y="CDF", line_shape="hv", range_x=[2, 12], range_y=[0, 1],
+                   color_discrete_sequence=px.colors.qualitative.Alphabet)
+    plot.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1),
+                       yaxis=dict(tickmode='array', tickvals=reference_cdf,
+                                  ticktext=[f"{tick:.2f}" for tick in reference_cdf]))
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
-    return get_svg(fig)
 
 def formula_usage(db: Connection, campaign: str) -> str:
     """
@@ -186,23 +150,14 @@ def formula_usage(db: Connection, campaign: str) -> str:
 
     data = get_formula_usage(db, campaign)
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
+    df_source = {}
+    for key, value in data.items():
+        df_source.setdefault("Formula element", []).append(key)
+        df_source.setdefault("Usage Count", []).append(value)
+    df = pd.DataFrame.from_dict(df_source)
+    plot = px.bar(df, x="Formula element", y="Usage Count", color_discrete_sequence=["black"])
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
-    # Data
-    elements = sorted(list(data.keys()))
-    x = np.arange(len(elements))
-    width = 0.35
-    subplot.bar(x, [data[element] for element in elements], width, color="black")
-
-    # Parameters
-    subplot.set_ylabel("Number of rolls")
-    subplot.set_xticks(x)
-    subplot.set_xticklabels(elements, rotation=45)
-    common_settings(subplot, labels=False, xlabel="Formula element")
-
-    return get_svg(fig)
 
 def energy_usage(db: Connection, campaign: str) -> str:
     """
@@ -211,20 +166,10 @@ def energy_usage(db: Connection, campaign: str) -> str:
 
     data = get_energy_usage(db, campaign)
 
-    fig = plt.figure()
-    fig.tight_layout()
-    subplot = fig.add_subplot(111)
-
-    # Data
-    elements = sorted(list(data.keys()))
-    x = np.arange(len(elements))
-    width = 0.35
-    subplot.bar(x, [data[element] for element in elements], width, color="black")
-
-    # Parameters
-    subplot.set_ylabel("Number of rolls")
-    subplot.set_xticks(x)
-    subplot.set_xticklabels(elements, rotation=45)
-    common_settings(subplot, labels=False, xlabel="Invested energy")
-
-    return get_svg(fig)
+    df_source = {}
+    for key, value in data.items():
+        df_source.setdefault("Energies", []).append(key)
+        df_source.setdefault("Usage Count", []).append(value)
+    df = pd.DataFrame.from_dict(df_source)
+    plot = px.bar(df, x="Energies", y="Usage Count", color_discrete_sequence=["black"])
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
