@@ -9,7 +9,7 @@ import plotly
 import plotly.express as px
 
 from db import get_success_failure_by_player, get_critical_by_player, get_nimdir_index_by_player, get_formula_usage, \
-    get_energy_usage, get_base_dices, get_count_by_player
+    get_energy_usage, get_base_dices, get_count_by_player, get_thresholds_by_player, get_margins_by_player
 
 
 def _histogram_data(bounded_data: List[Union[float, int]]) -> Tuple[List[int], List[Union[float, int]]]:
@@ -25,7 +25,8 @@ def _histogram_data(bounded_data: List[Union[float, int]]) -> Tuple[List[int], L
     return counts, bin_edges
 
 
-def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union[int, float]] = ()) \
+def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union[int, float]] = (),
+             origin: bool = True) \
         -> Tuple[List[Union[float, int]], List[float]]:
     data = sorted(cdf_values)
 
@@ -39,9 +40,10 @@ def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union
 
     cdf = (cdf / cdf[-1]) * (len(bounded_data) / len(data))  # Unsolved instances hurts the cdf
     bin_edges = list(bin_edges)
-    bin_edges.insert(0, 0)
     cdf = list(cdf)
-    cdf.insert(0, 0)
+    if origin:
+        bin_edges.insert(0, 0)
+        cdf.insert(0, 0)
 
     new_bin_edges = []
     new_cdf = []
@@ -57,7 +59,7 @@ def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union
             elif to_add < bin_edges[i]:
                 # Create new point
                 new_bin_edges.append(to_add)
-                new_cdf.append(new_cdf[-1])
+                new_cdf.append(new_cdf[-1] if new_cdf else 0)
                 break
             else:
                 # Use old point
@@ -66,7 +68,7 @@ def cdf_data(cdf_values: List[Union[float, int]], shadow_points_from: List[Union
         if current_bin_idx == len(bin_edges) and new_bin_edges[-1] != to_add:
             # to_add is beyond the current range of bins
             new_bin_edges.append(to_add)
-            new_cdf.append(new_cdf[-1])
+            new_cdf.append(new_cdf[-1] if new_cdf else 0)
 
     return (bin_edges, cdf) if len(shadow_points_from) == 0 else (new_bin_edges, new_cdf)
 
@@ -143,6 +145,53 @@ def base_dice_distributions(db: Connection, campaign: str, player: Optional[str]
     plot.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1),
                        yaxis=dict(tickmode='array', tickvals=reference_cdf,
                                   ticktext=[f"{tick:.2f}" for tick in reference_cdf]))
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
+
+
+def thresholds_distributions(db: Connection, campaign: str, player: Optional[str] = None,
+                             test: Optional[str] = None) -> str:
+    """
+    Returns a cdf of the distribution of the thresholds for each player (or the "courage" of each player)
+    """
+    data = get_thresholds_by_player(db, campaign, player, test)
+
+    # Produce DataFrame
+    df_source: Dict[str, List[Union[int, float]]] = {
+        "Threshold": sorted(list({threshold for _, thresholds in list(data.items())
+                                  for threshold in thresholds}))
+    }
+    for name, thresholds in sorted(list(data.items())):
+        x, cdf = cdf_data(thresholds, shadow_points_from=df_source["Threshold"], origin=False)
+        df_source.setdefault(name.split(" ")[0], []).extend(cdf)
+    df = pd.DataFrame.from_dict(df_source)
+    df = pd.melt(df, id_vars=["Threshold"], var_name="Players", value_name="CDF")
+
+    plot = px.line(df, x="Threshold", color="Players", y="CDF", line_shape="hv",
+                   color_discrete_sequence=px.colors.qualitative.Alphabet)
+    plot.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1))
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
+
+
+def magins_distributions(db: Connection, campaign: str, player: Optional[str] = None,
+                         test: Optional[str] = None) -> str:
+    """
+    Returns a cdf of the distribution of the margins for each player
+    """
+    data = get_margins_by_player(db, campaign, player, test)
+
+    # Produce DataFrame
+    df_source: Dict[str, List[Union[int, float]]] = {
+        "Margin": sorted(list({margin for _, margins in sorted(list(data.items())) for margin in margins}))
+    }
+    for name, margins in sorted(list(data.items())):
+        x, cdf = cdf_data(margins, shadow_points_from=df_source["Margin"], origin=False)
+        df_source.setdefault(name.split(" ")[0], []).extend(cdf)
+    df = pd.DataFrame.from_dict(df_source)
+    df = pd.melt(df, id_vars=["Margin"], var_name="Players", value_name="CDF")
+
+    plot = px.line(df, x="Margin", color="Players", y="CDF", line_shape="hv",
+                   color_discrete_sequence=px.colors.qualitative.Alphabet)
+    plot.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1))
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
 

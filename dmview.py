@@ -20,14 +20,14 @@ from db import init_db_connection, insert_roll, create_db, get_stats_by_test, ge
 from discord_bot import roll_queue, init_bot, close_bot
 
 from graph import success_failure_by_player, critical_by_player, nimdir_index_by_player, base_dice_distributions, \
-    formula_usage, energy_usage, roll_count
+    formula_usage, energy_usage, roll_count, magins_distributions, thresholds_distributions
 
 ## config meta data ##
 default_section = 'Common'
 campaign_section = r'[a-zA-Z0-9]{1,30}'
-ConfigField = col.namedtuple('ConfigField', ['name', 
-                                             'type', 
-                                             'required', 
+ConfigField = col.namedtuple('ConfigField', ['name',
+                                             'type',
+                                             'required',
                                              'default_value'])
 
 bind_ip = ConfigField('bind_ip', 'str', False, '127.0.0.1')
@@ -51,10 +51,10 @@ database_path = ConfigField('database_path', 'str', False, "roll.sqlite3")
 
 config_meta = {
                 default_section: [
-                    bind_ip, 
-                    port, 
-                    root_dir, 
-                    campaign_dir, 
+                    bind_ip,
+                    port,
+                    root_dir,
+                    campaign_dir,
                     empty_campaign_msg,
                     no_such_campaign_msg,
                     no_such_sheet_msg,
@@ -117,7 +117,7 @@ def setup(app, config=None):
     return app
 
 def run(app):
-    app.run(host=app.local_config[bind_ip.name], 
+    app.run(host=app.local_config[bind_ip.name],
             port=app.local_config[port.name],
             debug=True)
     token = app.local_config.get(discord_bot_token.name)
@@ -128,7 +128,7 @@ def sanitize(data):
     """
         Returns data without any non alphanum(+[-_]) character
     """
-    return ''.join([c for c in data 
+    return ''.join([c for c in data
                     if c in string.ascii_letters + string.digits + '-_'])
 
 def get_campaign_path(campaign_id, config):
@@ -136,8 +136,8 @@ def get_campaign_path(campaign_id, config):
         Return the path to a campaign with respect to config
     """
     campaign_id = sanitize(campaign_id)
-    return os.path.join(config[root_dir.name], 
-                               config[campaign_dir.name], 
+    return os.path.join(config[root_dir.name],
+                               config[campaign_dir.name],
                                campaign_id)
 
 def get_campaign(path):
@@ -155,7 +155,7 @@ def get_sheet_path(campaign_id, sheet_id, config):
     return os.path.join(get_campaign_path(campaign_id, config), sheet_id)
 
 def get_file_content(path):
-    return Path(path).read_text() 
+    return Path(path).read_text()
 
 def create_campaign(path):
     """
@@ -240,6 +240,7 @@ def view_graph_page(campaign):
     player = request.args.get("player")
     test = request.args.get("test")
     with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
+        players = get_players(db, campaign)
         return render_template("graphs.html", campaign=campaign, filter_player=player, filter_test=test,
                                players=get_players(db, campaign),
                                test_stats=get_stats_by_test(db, campaign, filter_player=player, filter_test=test),
@@ -250,7 +251,12 @@ def view_graph_page(campaign):
                                base_dice_distributions=base_dice_distributions(db, campaign, player=player, test=test),
                                formula_usage=formula_usage(db, campaign, player=player, test=test),
                                energy_usage=energy_usage(db, campaign, player=player, test=test),
-                               roll_count=roll_count(db, campaign, player=player, test=test))
+                               roll_count=roll_count(db, campaign, player=player, test=test),
+                               thresholds_distributions=thresholds_distributions(db, campaign, player=player,
+                                                                                 test=test) if players else {},
+                               magins_distributions=magins_distributions(db, campaign, player=player,
+                                                                         test=test) if players else {})
+
 
 if __name__ == '__main__':
     run(app)

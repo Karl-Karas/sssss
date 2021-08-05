@@ -218,6 +218,54 @@ def get_nimdir_index_by_player(db: Connection, campaign: str, filter_player: Opt
             for name in sorted(list(set(list(successes.keys()) + list(failures.keys()))))}
 
 
+def get_thresholds_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                             filter_test: Optional[str] = None) -> Dict[str, int]:
+    """Return by player a list of all the thresholds he/she attempted"""
+    thresholds = {}
+
+    cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
+    try:
+        cur.execute('select "name", "threshold" from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' order by "name" asc', params)
+        for row in cur.fetchall():
+            thresholds.setdefault(row[0], []).append(row[1])
+    finally:
+        cur.close()
+
+    return thresholds
+
+
+def get_margins_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                          filter_test: Optional[str] = None) -> Dict[str, int]:
+    """Return by player a list of all the obtained margins"""
+    margins = {}
+
+    cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
+    try:
+        cur.execute('select "name", "margin" from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' order by "name" asc', params)
+        for row in cur.fetchall():
+            margins.setdefault(row[0], []).append(row[1])
+    finally:
+        cur.close()
+
+    return margins
+
+
 def get_base_dices(db: Connection, campaign: str, filter_player: Optional[str] = None,
                    filter_test: Optional[str] = None) -> Dict[str, List[int]]:
     """

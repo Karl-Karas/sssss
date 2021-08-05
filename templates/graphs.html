@@ -28,6 +28,8 @@
 <div id="critical_by_player" class="chart"></div>
 <div id="nimdir_index_by_player" class="chart"></div>
 <div id="base_dice_distributions" class="chart"></div>
+<div id="thresholds_distributions" class="chart"></div>
+<div id="magins_distributions" class="chart"></div>
 <div id="formula_usage" class="chart"></div>
 <div id="energy_usage" class="chart"></div>
 
@@ -61,6 +63,10 @@
     Plotly.plot("nimdir_index_by_player", nimdir_index_by_player_graph, {});
     const base_dice_distributions_graph = {{ base_dice_distributions | safe }};
     Plotly.plot("base_dice_distributions", base_dice_distributions_graph, {});
+    const thresholds_distributions_graph = {{ thresholds_distributions | safe }};
+    Plotly.plot("thresholds_distributions", thresholds_distributions_graph, {});
+    const magins_distributions_graph = {{ magins_distributions | safe }};
+    Plotly.plot("magins_distributions", magins_distributions_graph, {});
     const formula_usage_graph = {{ formula_usage | safe }};
     Plotly.plot("formula_usage", formula_usage_graph, {});
     const energy_usage_graph = {{ energy_usage | safe }};
