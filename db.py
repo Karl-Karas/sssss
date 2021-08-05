@@ -152,7 +152,7 @@ def get_nimdir_index_by_player(db: Connection, campaign: str) -> Dict[str, Tuple
         cur.close()
 
     return {name: (successes.get(name, 0), failures.get(name, 0))
-            for name in set(list(successes.keys()) + list(failures.keys()))}
+            for name in sorted(list(set(list(successes.keys()) + list(failures.keys()))))}
 
 
 def get_base_dices(db: Connection, campaign: str) -> Dict[str, List[int]]:

@@ -127,7 +127,7 @@ def base_dice_distributions(db: Connection, campaign: str) -> str:
     df_source: Dict[str, List[Union[int, float]]] = {"Sum of 2d6": [i for i in range(2, 13)]}
     df_source["Sum of 2d6"].insert(0, 0)
     reference_cdf = []
-    for name, sums in data.items():
+    for name, sums in sorted(list(data.items())):
         x, cdf = cdf_data(sums, shadow_points_from=df_source["Sum of 2d6"])
         if name == reference:
             reference_cdf = cdf
