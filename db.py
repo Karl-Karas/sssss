@@ -89,6 +89,23 @@ def insert_roll(db: Connection, campaign: str, post_data: Dict[str, Union[List, 
         print(f"The roll data {post_data} does not contain actual roll")
 
 
+def get_count_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[float, float]]:
+    """Return by player their total number of rolls"""
+    counts = {}
+
+    cur = db.cursor()
+    try:
+        cur.execute('select "name",'
+                    ' count(rowid)'
+                    ' from rolls where campaign=? and threshold > 0 group by "name"', [campaign])
+        for row in cur.fetchall():
+            counts[row[0]] = row[1]
+    finally:
+        cur.close()
+
+    return counts
+
+
 def get_success_failure_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[float, float]]:
     """Return by player a tuple containing the success and the failure rate in order"""
     rates = {}

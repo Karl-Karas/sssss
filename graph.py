@@ -9,7 +9,7 @@ import plotly
 import plotly.express as px
 
 from db import get_success_failure_by_player, get_critical_by_player, get_nimdir_index_by_player, get_formula_usage, \
-    get_energy_usage, get_base_dices
+    get_energy_usage, get_base_dices, get_count_by_player
 
 
 def _histogram_data(bounded_data: List[Union[float, int]]) -> Tuple[List[int], List[Union[float, int]]]:
@@ -172,4 +172,20 @@ def energy_usage(db: Connection, campaign: str) -> str:
         df_source["Usage Count"].append(value)
     df = pd.DataFrame.from_dict(df_source)
     plot = px.bar(df, x="Energies", y="Usage Count", color_discrete_sequence=["black"])
+    return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
+
+
+def roll_count(db: Connection, campaign: str) -> str:
+    """
+    Returns a bar plot showing the usage of each energy
+    """
+
+    data = get_count_by_player(db, campaign)
+
+    df_source = {"Players": [], "Number of rolls": []}
+    for key, value in data.items():
+        df_source["Players"].append(key.split(" ")[0])
+        df_source["Number of rolls"].append(value)
+    df = pd.DataFrame.from_dict(df_source)
+    plot = px.bar(df, x="Players", y="Number of rolls", color_discrete_sequence=["black"])
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)

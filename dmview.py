@@ -20,7 +20,7 @@ from db import init_db_connection, insert_roll, create_db, get_stats_by_test
 from discord_bot import roll_queue, init_bot, close_bot
 
 from graph import success_failure_by_player, critical_by_player, nimdir_index_by_player, base_dice_distributions, \
-    formula_usage, energy_usage
+    formula_usage, energy_usage, roll_count
 
 ## config meta data ##
 default_section = 'Common'
@@ -244,7 +244,8 @@ def view_graph_page(campaign):
                                nimdir_index_by_player=nimdir_index_by_player(db, campaign),
                                base_dice_distributions=base_dice_distributions(db, campaign),
                                formula_usage=formula_usage(db, campaign),
-                               energy_usage=energy_usage(db, campaign))
+                               energy_usage=energy_usage(db, campaign),
+                               roll_count=roll_count(db, campaign))
 
 if __name__ == '__main__':
     run(app)

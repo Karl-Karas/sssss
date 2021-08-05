@@ -8,6 +8,7 @@
 
 <h1>Statistics for campaign {{ campaign }}</h1>
 
+<div id="roll_count" class="chart"></div>
 <div id="success_failure_by_player" class="chart"></div>
 <div id="critical_by_player" class="chart"></div>
 <div id="nimdir_index_by_player" class="chart"></div>
@@ -29,6 +30,8 @@
 
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script type="text/javascript">
+    const roll_count_graph = {{ roll_count | safe }};
+    Plotly.plot("roll_count", roll_count_graph, {});
     const success_failure_by_player_graph = {{ success_failure_by_player | safe }};
     Plotly.plot("success_failure_by_player", success_failure_by_player_graph, {});
     const critical_by_player_graph = {{ critical_by_player | safe }};
