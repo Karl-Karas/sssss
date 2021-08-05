@@ -1,7 +1,7 @@
 import json
 import math
 from sqlite3 import Connection
-from typing import Union, List, Tuple, Dict
+from typing import Union, List, Tuple, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -87,35 +87,38 @@ def grouped_chart(data: Dict[str, Tuple[float, float]], categories: List[str], c
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def success_failure_by_player(db: Connection, campaign: str) -> str:
+def success_failure_by_player(db: Connection, campaign: str, player: Optional[str] = None,
+                              test: Optional[str] = None) -> str:
     """Returns a bar plot showing success and failures percentage by player in a json string"""
 
-    data = get_success_failure_by_player(db, campaign)
+    data = get_success_failure_by_player(db, campaign, player, test)
     return grouped_chart(data, ["Success Rate", "Failure Rate"], ["darkgreen", "tomato"], "Rate", "%")
 
 
-def critical_by_player(db: Connection, campaign: str) -> str:
+def critical_by_player(db: Connection, campaign: str, player: Optional[str] = None, test: Optional[str] = None) -> str:
     """Returns a bar plot showing critical success and failures by player in a json string"""
 
-    data = get_critical_by_player(db, campaign)
+    data = get_critical_by_player(db, campaign, player, test)
     return grouped_chart(data, ["Critical Successes", "Critical Failures"], ["darkgreen", "tomato"], "Type", "Count")
 
 
-def nimdir_index_by_player(db: Connection, campaign: str) -> str:
+def nimdir_index_by_player(db: Connection, campaign: str, player: Optional[str] = None,
+                           test: Optional[str] = None) -> str:
     """
     Returns a bar plot showing the maximum length of streaks of successes and failures by player in a json string
     """
 
-    data = get_nimdir_index_by_player(db, campaign)
+    data = get_nimdir_index_by_player(db, campaign, player, test)
     return grouped_chart(data, ["Success Streak", "Failure Streak"], ["darkgreen", "tomato"], "Type", "Streak")
 
 
-def base_dice_distributions(db: Connection, campaign: str) -> str:
+def base_dice_distributions(db: Connection, campaign: str, player: Optional[str] = None,
+                            test: Optional[str] = None) -> str:
     """
     Returns a cdf of the distribution of the 2 base dices for each player
     (as well as the theoretical distribution)
     """
-    data = get_base_dices(db, campaign)
+    data = get_base_dices(db, campaign, player, test)
     reference = "Reference"
 
     # Regular distribution
@@ -143,12 +146,12 @@ def base_dice_distributions(db: Connection, campaign: str) -> str:
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def formula_usage(db: Connection, campaign: str) -> str:
+def formula_usage(db: Connection, campaign: str, player: Optional[str] = None, test: Optional[str] = None) -> str:
     """
     Returns a bar plot showing the usage of each formula element
     """
 
-    data = get_formula_usage(db, campaign)
+    data = get_formula_usage(db, campaign, player, test)
 
     df_source = {"Formula element": [], "Usage Count": []}
     for key, value in data.items():
@@ -159,12 +162,12 @@ def formula_usage(db: Connection, campaign: str) -> str:
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def energy_usage(db: Connection, campaign: str) -> str:
+def energy_usage(db: Connection, campaign: str, player: Optional[str] = None, test: Optional[str] = None) -> str:
     """
     Returns a bar plot showing the usage of each energy
     """
 
-    data = get_energy_usage(db, campaign)
+    data = get_energy_usage(db, campaign, player, test)
 
     df_source = {"Energies": [], "Usage Count": []}
     for key, value in data.items():
@@ -175,12 +178,12 @@ def energy_usage(db: Connection, campaign: str) -> str:
     return json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def roll_count(db: Connection, campaign: str) -> str:
+def roll_count(db: Connection, campaign: str, player: Optional[str] = None, test: Optional[str] = None) -> str:
     """
     Returns a bar plot showing the usage of each energy
     """
 
-    data = get_count_by_player(db, campaign)
+    data = get_count_by_player(db, campaign, player, test)
 
     df_source = {"Players": [], "Number of rolls": []}
     for key, value in data.items():

@@ -1,7 +1,7 @@
 import math
 import os
 from sqlite3 import DatabaseError, Connection, connect
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict, Tuple, Optional
 
 integer_fields = ["number", "type", "max_value", "threshold", "margin", "margin_throttle", "talent_level",
                   "base_energy_cost", "critical_increase", "precision", "optional_precision", "power", "optional_power",
@@ -89,15 +89,34 @@ def insert_roll(db: Connection, campaign: str, post_data: Dict[str, Union[List, 
         print(f"The roll data {post_data} does not contain actual roll")
 
 
-def get_count_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[float, float]]:
+def get_players(db: Connection, campaign: str) -> List[str]:
+    """Return the list of players"""
+    cur = db.cursor()
+    try:
+        cur.execute('select "name" from rolls where campaign=? group by "name"', [campaign])
+        return sorted([row[0] for row in cur.fetchall()])
+    finally:
+        cur.close()
+
+
+def get_count_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                        filter_test: Optional[str] = None) -> Dict[str, Tuple[float, float]]:
     """Return by player their total number of rolls"""
     counts = {}
 
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select "name",'
                     ' count(rowid)'
-                    ' from rolls where campaign=? and threshold > 0 group by "name"', [campaign])
+                    ' from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' group by "name"', params)
         for row in cur.fetchall():
             counts[row[0]] = row[1]
     finally:
@@ -106,16 +125,25 @@ def get_count_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[float,
     return counts
 
 
-def get_success_failure_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[float, float]]:
+def get_success_failure_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                                  filter_test: Optional[str] = None) -> Dict[str, Tuple[float, float]]:
     """Return by player a tuple containing the success and the failure rate in order"""
     rates = {}
 
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select "name",'
                     ' count(case when ((margin > 0 or critical_success) and not critical_failure) then 1 end),'
                     ' count(rowid)'
-                    ' from rolls where campaign=? and threshold > 0 group by "name"', [campaign])
+                    ' from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' group by "name"', params)
         for row in cur.fetchall():
             rates[row[0]] = (row[1] / row[2] * 100, (row[2] - row[1]) / row[2] * 100)
     finally:
@@ -124,15 +152,24 @@ def get_success_failure_by_player(db: Connection, campaign: str) -> Dict[str, Tu
     return rates
 
 
-def get_critical_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[int, int]]:
+def get_critical_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                           filter_test: Optional[str] = None) -> Dict[str, Tuple[int, int]]:
     """Return by player a tuple containing the number of critical successes and failures in order"""
     data = {}
 
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select "name",'
                     ' count(case when critical_success then 1 end), count(case when critical_failure then 1 end)'
-                    ' from rolls where campaign=? and threshold > 0 group by "name"', [campaign])
+                    ' from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' group by "name"', params)
         for row in cur.fetchall():
             data[row[0]] = (row[1], row[2])
     finally:
@@ -141,16 +178,25 @@ def get_critical_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[int
     return data
 
 
-def get_nimdir_index_by_player(db: Connection, campaign: str) -> Dict[str, Tuple[int, int]]:
+def get_nimdir_index_by_player(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                               filter_test: Optional[str] = None) -> Dict[str, Tuple[int, int]]:
     """Return by player a tuple containing the streak of successes and the streak of failures in order"""
     failures = {}
     successes = {}
     streaks = {}
 
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select "name", ((margin > 0 or critical_success) and not critical_failure)'
-                    ' from rolls where campaign=? and threshold > 0 order by rowid asc', [campaign])
+                    ' from rolls where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' order by rowid asc', params)
         for row in cur.fetchall():
             streak = streaks.setdefault(row[0], (True, 0))
             if bool(row[1]) == streak[0]:
@@ -172,17 +218,25 @@ def get_nimdir_index_by_player(db: Connection, campaign: str) -> Dict[str, Tuple
             for name in sorted(list(set(list(successes.keys()) + list(failures.keys()))))}
 
 
-def get_base_dices(db: Connection, campaign: str) -> Dict[str, List[int]]:
+def get_base_dices(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                   filter_test: Optional[str] = None) -> Dict[str, List[int]]:
     """
     Returns in a dictionary, the list of sums of 2 base dices obtained for each player
     """
     sums = {}
 
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute("select R.name, sum(dice) from dices D inner join rolls R on D.roll=R.rowid"
                     " where R.campaign=? and D.type='base_dices' and R.type=6 and R.number=2 and R.threshold > 0"
-                    " group by D.roll", [campaign])
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + " group by D.roll", params)
         for row in cur.fetchall():
             sums.setdefault(row[0], []).append(row[1])
     finally:
@@ -191,13 +245,22 @@ def get_base_dices(db: Connection, campaign: str) -> Dict[str, List[int]]:
     return sums
 
 
-def get_formula_usage(db: Connection, campaign: str) -> Dict[str, int]:
+def get_formula_usage(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                      filter_test: Optional[str] = None) -> Dict[str, int]:
     """Return the usage of each component, means and realm"""
     data = {}
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select F.element, count(*) from formula_elements F inner join rolls R on F.roll=R.rowid'
-                    ' where R.campaign=? group by F.element', [campaign])
+                    ' where R.campaign=?'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' group by F.element', params)
         for row in cur.fetchall():
             data[row[0]] = row[1]
     finally:
@@ -205,13 +268,22 @@ def get_formula_usage(db: Connection, campaign: str) -> Dict[str, int]:
     return data
 
 
-def get_energy_usage(db: Connection, campaign: str) -> Dict[str, int]:
+def get_energy_usage(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                     filter_test: Optional[str] = None) -> Dict[str, int]:
     """Return the usage of each energy"""
     data = {}
     cur = db.cursor()
+    params = [campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select E.energy, count(*) from invested_energies E inner join rolls R on E.roll=R.rowid'
-                    ' where R.campaign=? group by E.energy', [campaign])
+                    ' where R.campaign=?'
+                    + (' and name=?' if filter_player else '')
+                    + (' and reason=?' if filter_test else '')
+                    + ' group by E.energy', params)
         for row in cur.fetchall():
             base_energy = row[0].split("-")[-1]
             data[base_energy] = data.get(base_energy, 0) + row[1]
@@ -220,16 +292,25 @@ def get_energy_usage(db: Connection, campaign: str) -> Dict[str, int]:
     return data
 
 
-def get_stats_by_test(db: Connection, campaign: str) -> List[Tuple[str, int, float, float]]:
+def get_stats_by_test(db: Connection, campaign: str, filter_player: Optional[str] = None,
+                      filter_test: Optional[str] = None) -> List[Tuple[str, int, float, float]]:
     """Return, for each test, its frequency, its average margin and its margin stddev"""
     data = []
     cur = db.cursor()
+    params = [campaign, campaign]
+    if filter_player:
+        params.append(filter_player)
+    if filter_test:
+        params.append(filter_test)
     try:
         cur.execute('select R.reason, count(rowid) as c, s.a, avg((R.margin - s.a) * (R.margin - s.a)) as var'
                     ' from rolls R inner join'
                     ' (select reason, avg(margin) AS a FROM rolls where campaign=? and threshold > 0 group by reason) s'
                     ' on R.reason=s.reason'
-                    ' where campaign=? and threshold > 0 group by R.reason order by c desc', [campaign, campaign])
+                    ' where campaign=? and threshold > 0'
+                    + (' and name=?' if filter_player else '')
+                    + (' and R.reason=?' if filter_test else '')
+                    + ' group by R.reason order by c desc', params)
         for row in cur.fetchall():
             data.append((row[0], row[1], row[2], math.sqrt(row[3])))
     finally:

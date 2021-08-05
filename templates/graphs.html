@@ -8,6 +8,21 @@
 
 <h1>Statistics for campaign {{ campaign }}</h1>
 
+<label for="player-select">Filter by player</label>
+<select id="player-select" onchange="location = this.value;">
+    <option value="{{ url_for("view_graph_page", campaign=campaign, test=filter_test) }}">All players</option>
+    {% for player in players %}
+        {% set selected = "" %}
+        {% if player == filter_player %}
+            {% set selected = "selected" %}
+        {% endif %}
+        <option value="{{ url_for("view_graph_page", campaign=campaign, test=filter_test, player=player) }}"
+                {{ selected }}>
+            {{ player }}
+        </option>
+    {% endfor %}
+</select>
+
 <div id="roll_count" class="chart"></div>
 <div id="success_failure_by_player" class="chart"></div>
 <div id="critical_by_player" class="chart"></div>
@@ -16,11 +31,17 @@
 <div id="formula_usage" class="chart"></div>
 <div id="energy_usage" class="chart"></div>
 
-<h2>Tests</h2>
+<h2>Statistics by talent</h2>
+{% if filter_test %}
+    <a href="{{ url_for("view_graph_page", campaign=campaign, player=filter_player) }}">Reset the talent filter</a>
+{% endif %}
 <ul>
     {% for test, freq, mean, stddev in test_stats %}
         <li>
-            "{{ test }}" rolled {{ freq }} times for a mean margin of {{ mean|round(2) }}
+            <a href="{{ url_for("view_graph_page", campaign=campaign, test=test, player=filter_player) }}">
+                {{ test }}
+            </a>
+            rolled {{ freq }} times for a mean margin of {{ mean|round(2) }}
             (standard deviation: {{ stddev|round(2) }})
         </li>
     {% endfor %}

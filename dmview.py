@@ -16,7 +16,7 @@ from pathlib import Path
 from flask import Flask, current_app, request, Response, render_template, abort
 from markupsafe import escape
 
-from db import init_db_connection, insert_roll, create_db, get_stats_by_test
+from db import init_db_connection, insert_roll, create_db, get_stats_by_test, get_players
 from discord_bot import roll_queue, init_bot, close_bot
 
 from graph import success_failure_by_player, critical_by_player, nimdir_index_by_player, base_dice_distributions, \
@@ -237,15 +237,20 @@ def push_roll(campaign_id):
 
 @app.route('/graphs/<campaign>', methods=['GET'])
 def view_graph_page(campaign):
+    player = request.args.get("player")
+    test = request.args.get("test")
     with init_db_connection(app.local_config.get(database_path.name, database_path.default_value)) as db:
-        return render_template("graphs.html", campaign=campaign, test_stats=get_stats_by_test(db, campaign),
-                               success_failure_by_player=success_failure_by_player(db, campaign),
-                               critical_by_player=critical_by_player(db, campaign),
-                               nimdir_index_by_player=nimdir_index_by_player(db, campaign),
-                               base_dice_distributions=base_dice_distributions(db, campaign),
-                               formula_usage=formula_usage(db, campaign),
-                               energy_usage=energy_usage(db, campaign),
-                               roll_count=roll_count(db, campaign))
+        return render_template("graphs.html", campaign=campaign, filter_player=player, filter_test=test,
+                               players=get_players(db, campaign),
+                               test_stats=get_stats_by_test(db, campaign, filter_player=player, filter_test=test),
+                               success_failure_by_player=success_failure_by_player(db, campaign, player=player,
+                                                                                   test=test),
+                               critical_by_player=critical_by_player(db, campaign, player=player, test=test),
+                               nimdir_index_by_player=nimdir_index_by_player(db, campaign, player=player, test=test),
+                               base_dice_distributions=base_dice_distributions(db, campaign, player=player, test=test),
+                               formula_usage=formula_usage(db, campaign, player=player, test=test),
+                               energy_usage=energy_usage(db, campaign, player=player, test=test),
+                               roll_count=roll_count(db, campaign, player=player, test=test))
 
 if __name__ == '__main__':
     run(app)
