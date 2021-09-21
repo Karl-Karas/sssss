@@ -76,6 +76,20 @@ liste des fiches disponibles pour la campagne et les consulter, ce qui renvoie
 tout le contenu de la fiche complète, mise en forme comme la voit la joueuse ou
 le joueur (au moment où il l'a exportée)).
 
+Vous aurez sans doute vu dans la configuration qu'on peut y spécifier des brols
+Discord : c'est parce que nous avons ajouté un Bot Discord dans le serveur. Il
+l'inviter sur votre serveur (voyez la doc de Discord pour ça), puis dans l'onglet
+« Exporter », on pourra spécifier un autre URL servant à envoyer les jets de
+dés ::
+
+  https://url_de_mon_serveur.org/roll/<identifiant campagne>
+ 
+A partir de là, si tout est bien en place, le serveur va recevoir tous les jets 
+de dés, en profiter pour tenir quelques statistiques, et les filer au bot afin
+qu'il les reposte sur votre serveur Discord sous une forme agréable. Ca ne 
+remplace pas le bon vieux lancé sur la table, mais ça permet à chacun de voir
+les résultats simplement, ... si on joue avec Discord of course.
+
 Note
 ----
 
