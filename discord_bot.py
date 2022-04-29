@@ -129,7 +129,7 @@ def get_result(margin=None, crit_succ=None, crit_fail=None):
                          'Ssa pR0Uvf k€ mON Thé m4RCh bi3n',
                          '@tR4Pp pA La GroO0Ss tÈTt, pRàn pLUtô dU Thé' ]),
         'simple_roll': ( 0x0066cc, # blue
-                        "[𝅘𝅥𝅮 Take a chance, roll the dices! 𝅘𝅥𝅯 ]",
+                        "[𝅘𝅥𝅮 Take a chance, roll the dice! 𝅘𝅥𝅯 ]",
                         ['smiley', 'grinning', 'blush', 'stuck_out_tongue',
                         'upside_down', 'kissing_smiling_eyes', '+1', 'clap',
                         'pensive', 'worried', 'confused', 'persevere',
